@@ -13,3 +13,15 @@ Use this asset with no modifications to copy media files from your asset to /opt
 * Update the doc/HELP.html as appropriate
 * Create a zip file of this directory
 * [Import this asset into CONS3RT](https://kb.cons3rt.com/kb/assets/importing-your-asset-zip-file)
+
+---
+
+## Prerequisites
+
+*   Linux OS
+
+## Exit Codes
+
+*   0 = Success
+*   Non-Zero = Media file copy failed
+
