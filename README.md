@@ -9,8 +9,8 @@ Use this asset with no modifications to copy media files from your asset to /opt
 * git clone https://github.com/cons3rt/media-file-asset-linux.git
 * Add your media files to the media directory
 * Update the asset.properties file
-* Update the doc/LICENSE.html with links to appropriate license info
-* Update the doc/HELP.html as appropriate
+* Update the LICENSE.md with links to appropriate license info
+* Update the README.md as appropriate
 * Create a zip file of this directory
 * [Import this asset into CONS3RT](https://kb.cons3rt.com/kb/assets/importing-your-asset-zip-file)
 
