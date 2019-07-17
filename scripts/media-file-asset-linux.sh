@@ -1,91 +1,81 @@
 #!/bin/bash
-# Created by J. Yennaco (5/16/2016)
 
-# Use this script with no modifications to copy media files from
-# your asset to /opt/install_media.  Otherwise, update the "installDir"
-# variable below.
+# Source the environment
+if [ -f /etc/bashrc ] ; then
+    . /etc/bashrc
+fi
+if [ -f /etc/profile ] ; then
+    . /etc/profile
+fi
 
-# Set log commands
+# Establish a log file and log tag
 logTag="media-file-asset-linux"
-logInfo="logger -i -s -p local3.info -t ${logTag} [INFO] "
-logWarn="logger -i -s -p local3.warning -t ${logTag} [WARNING] "
-logErr="logger -i -s -p local3.err -t ${logTag} [ERROR] "
-
-# Get the current timestamp and append to logfile name
-TIMESTAMP=$(date "+%Y-%m-%d-%H%M")
-source /etc/bashrc
+logDir="/opt/cons3rt-agent/log"
+logFile="${logDir}/${logTag}-$(date "+%Y%m%d-%H%M%S").log"
 
 ######################### GLOBAL VARIABLES #########################
+
+# Media directory
+mediaDir=
 
 # Media file staging directory
 installDir="/opt/install_media"
 
-# Array to maintain exit codes of commands
-resultSet=()
-
 ####################### END GLOBAL VARIABLES #######################
 
-# Executes the passed command, adds the status to the resultSet
-# array and return the exit code of the executed command
-# Parameters:
-# 1 - Command to execute
-# Returns:
-# Exit code of the command that was executed
-function run_and_check_status() {
-    local command="$@"
-    ${command}
-    local status=$?
-    if [ ${status} -ne 0 ] ; then
-        ${logErr} "Error executing: ${command}, exited with code: ${status}"
-    else
-        ${logInfo} "${command} executed successfully and exited with code: ${status}"
-    fi
-    resultSet+=("${status}")
-    return ${status}
-}
+# Logging functions
+function timestamp() { date "+%F %T"; }
+function logInfo() { echo -e "$(timestamp) ${logTag} [INFO]: ${1}" >> ${logFile}; }
+function logWarn() { echo -e "$(timestamp) ${logTag} [WARN]: ${1}" >> ${logFile}; }
+function logErr() { echo -e "$(timestamp) ${logTag} [ERROR]: ${1}" >> ${logFile}; }
 
-# Main function
-function main() {
-    ${logInfo} "Running ${logTag}..."
-    
+function set_asset_dir() {
     # Ensure ASSET_DIR exists, if not assume this script exists in ASSET_DIR/scripts
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     if [ -z "${ASSET_DIR}" ] ; then
-        ${logWarn} "ASSET_DIR not found, assuming ASSET_DIR is 1 level above this script ..."
-        SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-        ASSET_DIR=${SCRIPT_DIR}/..
+        logWarn "ASSET_DIR not found, assuming ASSET_DIR is 1 level above this script ..."
+        export ASSET_DIR="${SCRIPT_DIR}/.."
     fi
     mediaDir="${ASSET_DIR}/media"
-    
+}
+
+function main() {
+    logInfo "Running ${logTag}..."
+    set_asset_dir
+
     # Ensure the media directory exists
     if [ ! -d "${mediaDir}" ] ; then
-        ${logErr} "Media directory not found: ${mediaDir}"
+        logErr "Media directory not found: ${mediaDir}"
         return 1
     else
-        ${logInfo} "Found media directory: ${mediaDir}"
+        logInfo "Found media directory: ${mediaDir}"
     fi
 
     # Create the install directory
-    run_and_check_status mkdir -p ${installDir}
+    logInfo "Creating directory: ${installDir}"
+    mkdir -p ${installDir} >> ${logFile} 2>&1
     
     # Copy files to the install directory
-    run_and_check_status cp -Rf ${mediaDir}/* ${installDir}/
-    
-    # Clean up the media directory to avoid 2 copies of media on the system
-    run_and_check_status rm -Rf ${mediaDir} 
+    logInfo "Copying files: ${mediaDir} to ${installDir}"
+    cp -Rf ${mediaDir}/* ${installDir}/ >> ${logFile} 2>&1
+    if [ $? -ne 0 ]; then logErr "Problem copying file from ${mediaDir} to ${installDir}"; return 2; fi
+    logInfo "Completed copying files to: ${installDir}"
 
-    # Check the results of commands from this script
-    for resultCheck in "${resultSet[@]}" ; do
-        if [ ${resultCheck} -ne 0 ] ; then
-            ${logErr} "Non-zero exit code found: ${resultCheck}"
-            return 2
-        fi
-    done
-    ${logInfo} "Successfully staged media files!"
+    # Clean up the media directory to avoid 2 copies of media on the system
+    logInfo "Cleaning up media dir to save space, removing: ${mediaDir}"
+    rm -Rf ${mediaDir} >> ${logFile} 2>&1
     return 0
 }
 
+# Set up the log file
+mkdir -p ${logDir}
+chmod 700 ${logDir}
+touch ${logFile}
+chmod 644 ${logFile}
+
 main
 result=$?
+cat ${logFile}
 
-${logInfo} "Exiting with code ${result} ..."
+logInfo "Exiting with code ${result} ..."
 exit ${result}
